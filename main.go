@@ -3,34 +3,56 @@ package main
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 )
 
 func main() {
 
-	file, err := os.Open("messages.txt")
-	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
+	s, e := net.Listen("tcp", ":42069")
+
+	if e != nil {
+		fmt.Println("Error listening:", e.Error())
+		os.Exit(1)
 	}
+	fmt.Println("Listening on :42069")
+
 	// Ensure the file is closed after reading
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			fmt.Println("Error closing file:", err)
+	defer func(listener net.Listener) {
+		if err := listener.Close(); err != nil {
+			fmt.Println("Error closing listener:", err)
 		}
-	}(file)
+	}(s)
+
+	for {
+
+		conn, err := s.Accept()
+		if err != nil {
+			fmt.Println("Error accepting connection:", err)
+			continue
+		}
+
+		lines := getLinesChannel(conn)
+		fmt.Println("New connection accepted")
+
+		for line := range lines {
+			fmt.Printf("Received line: %s\n", line)
+		}
+
+	}
 
 	// Use the file as an io.ReadCloser
-	readCloser := io.ReadCloser(file)
-	// Open file
-	lines := getLinesChannel(readCloser)
+	/*
+		readCloser := io.ReadCloser(file)
+		lines := getLinesChannel(readCloser)
 
-	for line := range lines {
-		fmt.Printf("read: %s\n", line)
-	}
+		for line := range lines {
+			fmt.Printf("read: %s\n", line)
+		}
 
+
+	*/
 }
 
 func getLinesChannel(f io.ReadCloser) <-chan string {
@@ -40,47 +62,38 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 
 	go func() {
 		defer close(lines)
-
+		defer func(f io.ReadCloser) {
+			if err := f.Close(); err != nil {
+				fmt.Println("Error closing connection:", err)
+			} else {
+				fmt.Println("Connection closed successfully")
+			}
+		}(f)
 		var b = make([]byte, 8)
 		// Read file
-
-		n, err := f.Read(b)
-		if err != nil {
-			fmt.Println("Error: ", err)
-			return
-		}
 		currentLine := ""
-		// read while not EOF
-		for n > 0 {
-
-			parts := strings.Split(string(b), "\n")
-
-			if len(parts) > 1 {
-
-				currentLine += parts[0]
-
-				// Send line to channel
-
-				lines <- currentLine
-
-				currentLine = parts[1]
-
-			} else {
-				currentLine += parts[0]
-			}
-
-			n, err = f.Read(b)
+		for {
+			n, err := f.Read(b)
 			if err == io.EOF {
-				return
-			}
-			if err != nil {
-				fmt.Println("Error: ", err)
-				return
+				if currentLine != "" {
+					// Send the last line if it exists
+					lines <- currentLine
+				}
+				break
 			}
 
-		}
-		if err := f.Close(); err != nil {
-			fmt.Println("Error closing file:", err)
+			if n > 0 {
+				data := string(b[:n])
+				parts := strings.Split(data, "\n")
+				if len(parts) > 1 {
+					lines <- currentLine + parts[0]
+					currentLine = parts[len(parts)-1]
+
+				} else {
+					currentLine += parts[0]
+				}
+
+			}
 		}
 	}()
 
