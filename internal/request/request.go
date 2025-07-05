@@ -1,7 +1,6 @@
 package request
 
 import (
-	"fmt"
 	"io"
 	"strings"
 )
@@ -31,16 +30,16 @@ func (r *Request) parse(data []byte) (int, error) {
 		return 0, io.ErrUnexpectedEOF // Request is not in the initialized state
 	}
 
-	endOfLine, err := parseRequestLine(string(data))
+	lineForParse, err := parseRequestLine(string(data))
 	if err != nil {
 		return 0, err
 	}
-	if endOfLine == 0 {
+	if lineForParse == 0 {
 
 		return 0, nil
 	}
 
-	line := string(data[:endOfLine-len("\r\n")])
+	line := string(data[:lineForParse-len("\r\n")])
 	parts := strings.Split(line, " ")
 	if len(parts) < 3 {
 		return 0, io.ErrUnexpectedEOF // Not enough parts for a valid request line
@@ -49,7 +48,7 @@ func (r *Request) parse(data []byte) (int, error) {
 	r.RequestLine.RequestTarget = parts[1]
 	r.RequestLine.HttpVersion = strings.TrimPrefix(parts[2], "HTTP/")
 	r.State = done // Mark the request as done after parsing the request line
-	return endOfLine, nil
+	return lineForParse, nil
 
 }
 func RequestFromReader_Latest(reader io.Reader) (*Request, error) {
@@ -108,7 +107,8 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 		buffer = buffer[endOfLine:] // Remove the parsed part from the buffer
 		if r.State == done {
-			fmt.Print("Buffer after parsing: ", string(buffer), "\n")
+			//		fmt.Print("Buffer after parsing: ", string(buffer), "\n")
+			//		fmt.Println("Read to index:", readToIndex)
 			return r, nil // Return the request if it has been parsed
 		}
 
@@ -139,13 +139,13 @@ func readLine(reader io.Reader) (string, error) {
 
 func parseRequestLine(line string) (int, error) {
 
-	endOfLine := strings.Index(line, "\r\n")
-	if endOfLine == -1 {
+	beforeEndOfLineIndex := strings.Index(line, "\r\n")
+	if beforeEndOfLineIndex == -1 {
 		return 0, nil // No end of line found, return nil error
 	}
-	parts := strings.Split(line[:endOfLine], " ")
+	parts := strings.Split(line[:beforeEndOfLineIndex], " ")
 	if len(parts) < 3 {
 		return 0, io.ErrUnexpectedEOF // Not enough parts for a valid request line
 	}
-	return endOfLine + len("\r\n"), nil
+	return beforeEndOfLineIndex + len("\r\n"), nil
 }

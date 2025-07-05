@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/kiquetal/learn-http-protocol/internal/request"
 	"io"
 	"net"
 	"os"
@@ -32,14 +33,26 @@ func main() {
 			fmt.Println("Error accepting connection:", err)
 			continue
 		}
+		/*
+			lines := getLinesChannel(conn)
+			fmt.Println("New connection accepted")
 
-		lines := getLinesChannel(conn)
-		fmt.Println("New connection accepted")
+			for line := range lines {
+				fmt.Printf("Received line: %s\n", line)
+			}
 
-		for line := range lines {
-			fmt.Printf("Received line: %s\n", line)
+
+		*/
+		r, err_2 := request.RequestFromReader(conn)
+		if err_2 != nil {
+			fmt.Println("Error reading request:", err_2)
+			conn.Close()
+			continue
 		}
-
+		fmt.Printf("Request line:\r\n")
+		fmt.Printf("- Method: %s\r\n", r.RequestLine.Method)
+		fmt.Printf("- Target: %s\r\n", r.RequestLine.RequestTarget)
+		fmt.Printf("- Version: %s\r\n", r.RequestLine.HttpVersion)
 	}
 
 	// Use the file as an io.ReadCloser
