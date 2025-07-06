@@ -1,6 +1,7 @@
 package request
 
 import (
+	"fmt"
 	"io"
 	"strings"
 )
@@ -75,6 +76,7 @@ func RequestFromReader_Latest(reader io.Reader) (*Request, error) {
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	r := &Request{State: intialized}
 	buffer := make([]byte, 0, 8)
+	readToIndex := 0
 
 	for {
 		//read by chunk, follow the num of read and num of parsed bytes
@@ -92,6 +94,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			return nil, err // Return any other error
 		}
 		// Append the read bytes to the buffer
+		readToIndex += n
 		buffer = append(buffer, tmp[:n]...)
 		// Parse the request line
 		endOfLine, err := r.parse(buffer)
@@ -105,6 +108,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 		buffer = buffer[endOfLine:] // Remove the parsed part from the buffer
 		if r.State == done {
+			fmt.Print("Buffer after parsing: ", string(buffer), "\n")
 			return r, nil // Return the request if it has been parsed
 		}
 
