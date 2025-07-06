@@ -5,8 +5,16 @@ import (
 	"strings"
 )
 
+type state int
+
+const (
+	intialized state = iota
+	done
+)
+
 type Request struct {
 	RequestLine RequestLine
+	State       state
 }
 
 type RequestLine struct {
@@ -15,7 +23,10 @@ type RequestLine struct {
 	Method        string
 }
 
-func RequestFromReader(reader io.Reader) (*Request, error) {
+func (r *Request) parse(data []byte) (int, error) {
+
+}
+func RequestFromReader_Latest(reader io.Reader) (*Request, error) {
 
 	firstLine, err := readLine(reader)
 	if err != nil {
@@ -34,6 +45,12 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			HttpVersion:   httpVersion,
 		}}, nil
 
+}
+
+func RequestFromReader(reader io.Reader) (*Request, error) {
+	for {
+
+	}
 }
 
 func readLine(reader io.Reader) (string, error) {
@@ -55,4 +72,8 @@ func readLine(reader io.Reader) (string, error) {
 		}
 	}
 	return string(buf), nil
+}
+
+func parseRequestLine(line string) (int, error) {
+
 }
