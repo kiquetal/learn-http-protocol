@@ -26,10 +26,29 @@ type RequestLine struct {
 func (r *Request) parse(data []byte) (int, error) {
 
 	//parse slice of bytes into request line
-
-	if r.State == intialized {
-
+	if r.State != intialized {
+		return 0, io.ErrUnexpectedEOF // Request is not in the initialized state
 	}
+
+	endOfLine, err := parseRequestLine(string(data))
+	if err != nil {
+		return 0, err
+	}
+	if endOfLine == 0 {
+
+		return 0, nil
+	}
+
+	line := string(data[:endOfLine] - len("\r\n"))
+	parts := strings.Split(line, " ")
+	if len(parts) < 3 {
+		return 0, io.ErrUnexpectedEOF // Not enough parts for a valid request line
+	}
+	r.RequestLine.Method = parts[0]
+	r.RequestLine.RequestTarget = parts[1]
+	r.RequestLine.HttpVersion = strings.TrimPrefix(parts[2], "HTTP/")
+	r.State = done // Mark the request as done after parsing the request line
+	return endOfLine, nil
 
 }
 func RequestFromReader_Latest(reader io.Reader) (*Request, error) {
