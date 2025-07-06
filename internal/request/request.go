@@ -57,6 +57,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	r := &Request{State: intialized}
 	for {
 		//read by chunk, follow the num of read and num of parsed bytes
+		//do not use readLine
 
 	}
 }
@@ -84,11 +85,12 @@ func readLine(reader io.Reader) (string, error) {
 
 func parseRequestLine(line string) (int, error) {
 
-	//it should return number of bytes read and error if any
-
-	parts := strings.Split(line, " ")
-	if len(parts) < 3 {
-		return 0, io.ErrUnexpectedEOF // Not enough parts for a valid request line
+	endOfLine := strings.Index(line, "\r\n")
+	if endOfLine == -1 {
+		return 0, 0
 	}
-	return len(line), nil // Return the length of the line as the number of bytes read
+	parts := strings.Split(line[:endOfLine], " ")
+	//THIS CAN NOT BE AN ERROR, BECAUS I'M READING BY CHUNK
+	//ASSUME I WONT HAVE THE FULL LINE
+
 }
