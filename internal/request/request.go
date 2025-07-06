@@ -25,11 +25,13 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 	if len(parts) < 3 {
 		return nil, io.ErrUnexpectedEOF // Not enough parts for a valid request line
 	}
+	httpLine := parts[2]
+	httpVersion := strings.TrimPrefix(httpLine, "HTTP/")
 	return &Request{
 		RequestLine: RequestLine{
 			Method:        parts[0],
 			RequestTarget: parts[1],
-			HttpVersion:   parts[2],
+			HttpVersion:   httpVersion,
 		}}, nil
 
 }
