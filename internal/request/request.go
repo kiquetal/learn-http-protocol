@@ -39,7 +39,7 @@ func (r *Request) parse(data []byte) (int, error) {
 		return 0, nil
 	}
 
-	line := string(data[:endOfLine] - len("\r\n"))
+	line := string(data[:endOfLine-len("\r\n")])
 	parts := strings.Split(line, " ")
 	if len(parts) < 3 {
 		return 0, io.ErrUnexpectedEOF // Not enough parts for a valid request line
@@ -74,23 +74,42 @@ func RequestFromReader_Latest(reader io.Reader) (*Request, error) {
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	r := &Request{State: intialized}
-	buffer := make([]byte, 8)
+	buffer := make([]byte, 0, 8)
 
 	for {
 		//read by chunk, follow the num of read and num of parsed bytes
 		//do not use readLine
-		b, e := reader.Read(buffer)
-		if e != nil && e != io.EOF {
-			return nil, e
-		}
-		if b == 0 {
-			if r.State == done {
-				return r, nil // Return the request if it's done
+
+		tmp := make([]byte, 8)
+		n, err := reader.Read(tmp)
+		if err != nil {
+			if err == io.EOF {
+				if r.State == intialized {
+					return nil, io.ErrUnexpectedEOF // Request is not complete
+				}
+				return r, nil // Return the request if it has been parsed
 			}
-			continue // No data read, continue to next iteration
+			return nil, err // Return any other error
+		}
+		// Append the read bytes to the buffer
+		buffer = append(buffer, tmp[:n]...)
+		// Parse the request line
+		endOfLine, err := r.parse(buffer)
+		if err != nil {
+			return nil, err // Return any other error
+		}
+		if endOfLine == 0 {
+			// If no end of line was found, continue reading
+			continue
+		}
+
+		buffer = buffer[endOfLine:] // Remove the parsed part from the buffer
+		if r.State == done {
+			return r, nil // Return the request if it has been parsed
 		}
 
 	}
+
 }
 
 func readLine(reader io.Reader) (string, error) {
