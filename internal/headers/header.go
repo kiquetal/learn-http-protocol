@@ -41,8 +41,13 @@ func (h Header) Parse(data []byte) (n int, done bool, err error) {
 	keyHeader := strings.TrimSpace(keyValue[0])
 	valueHeader := strings.TrimSpace(keyValue[1])
 
+	if strings.Contains(keyHeader, " ") || strings.Contains(valueHeader, " ") {
+		fmt.Printf("Invalid Header: '%s'\n", keyHeader)
+		return 0, false, errors.New("Invalid Header: key or value contains spaces") // Key or value contains spaces
+	}
+
 	h[keyHeader] = valueHeader
 	n = len(lines[0]) + len(crlf) // Length of the header line plus CRLF
 
-	return n, true, nil // Successfully parsed the header line
+	return n, false, nil // Successfully parsed the header line
 }
