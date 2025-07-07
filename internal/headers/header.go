@@ -46,8 +46,34 @@ func (h Header) Parse(data []byte) (n int, done bool, err error) {
 		return 0, false, errors.New("Invalid Header: key or value contains spaces") // Key or value contains spaces
 	}
 
+	if !check_is_valid_header_name(keyHeader) {
+		return 0, false, errors.New("Invalid Header: key contains invalid characters") // Key contains invalid characters
+	}
+	keyHeader = strings.ToLower(keyHeader) // Normalize header key to lowercase
 	h[keyHeader] = valueHeader
 	n = len(lines[0]) + len(crlf) // Length of the header line plus CRLF
 
 	return n, false, nil // Successfully parsed the header line
+}
+
+func check_is_valid_header_name(header string) bool {
+	//this will check if the header name is valid according to RFC 7230
+	if len(header) < 1 {
+		fmt.Printf("Invalid Header: '%s'\n", header)
+
+		return false // Header name is empty
+	}
+	for _, char := range header {
+
+		if char < 33 || char > 126 || char == ':' || char == ' ' {
+			fmt.Printf("Invalid Header: '%s'\n", header)
+			return false // Header name contains invalid characters
+		}
+		if strings.Contains(header, "\r") || strings.Contains(header, "\n") {
+			fmt.Printf("Invalid Header: '%s'\n", header)
+			return false // Header name contains CR or LF characters
+		}
+
+	}
+	return true // Header name is valid
 }
