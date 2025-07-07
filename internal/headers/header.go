@@ -35,14 +35,14 @@ func (h Header) Parse(data []byte) (n int, done bool, err error) {
 	}
 
 	if strings.Contains(keyValue[0], " ") {
-		fmt.Printf("Invalid Header: '%s'\n", keyValue[0])
+		//		fmt.Printf("Invalid Header: '%s'\n", keyValue[0])
 		return 0, false, errors.New("Invalid Header: key contains invalid characters") // Key contains invalid characters
 	}
 	keyHeader := strings.TrimSpace(keyValue[0])
 	valueHeader := strings.TrimSpace(keyValue[1])
 
 	if strings.Contains(keyHeader, " ") || strings.Contains(valueHeader, " ") {
-		fmt.Printf("Invalid Header: '%s'\n", keyHeader)
+		//	fmt.Printf("Invalid Header: '%s'\n", keyHeader)
 		return 0, false, errors.New("Invalid Header: key or value contains spaces") // Key or value contains spaces
 	}
 
@@ -59,7 +59,7 @@ func (h Header) Parse(data []byte) (n int, done bool, err error) {
 func check_is_valid_header_name(header string) bool {
 	//this will check if the header name is valid according to RFC 7230
 	if len(header) < 1 {
-		fmt.Printf("Invalid Header: '%s'\n", header)
+		//		fmt.Printf("Invalid Header: '%s'\n", header)
 
 		return false // Header name is empty
 	}
