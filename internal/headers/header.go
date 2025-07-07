@@ -8,7 +8,7 @@ import (
 
 type Header map[string]string
 
-func NewHeader() Header {
+func NewHeaders() Header {
 	return make(Header)
 }
 
@@ -33,12 +33,14 @@ func (h Header) Parse(data []byte) (n int, done bool, err error) {
 	if len(keyValue) < 2 {
 		return 0, false, errors.New("Invalid Header") // Not a valid header line
 	}
+
+	if strings.Contains(keyValue[0], " ") {
+		fmt.Printf("Invalid Header: '%s'\n", keyValue[0])
+		return 0, false, errors.New("Invalid Header: key contains invalid characters") // Key contains invalid characters
+	}
 	keyHeader := strings.TrimSpace(keyValue[0])
 	valueHeader := strings.TrimSpace(keyValue[1])
 
-	if strings.Contains(keyHeader, " ") {
-		return 0, false, errors.New("Invalid Header: key contains invalid characters") // Key contains invalid characters
-	}
 	h[keyHeader] = valueHeader
 	n = len(lines[0]) + len(crlf) // Length of the header line plus CRLF
 
