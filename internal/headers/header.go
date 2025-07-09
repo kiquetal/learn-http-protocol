@@ -50,7 +50,20 @@ func (h Header) Parse(data []byte) (n int, done bool, err error) {
 		return 0, false, errors.New("Invalid Header: key contains invalid characters") // Key contains invalid characters
 	}
 	keyHeader = strings.ToLower(keyHeader) // Normalize header key to lowercase
-	h[keyHeader] = valueHeader
+
+	// Check if the header already exists
+	if existingValue, exists := h[keyHeader]; exists {
+		// If it exists, append the new value to the existing one
+		//remove ';' before appending from valueHeader
+		valueHeader = strings.TrimSuffix(valueHeader, ";") // Remove trailing semicolon if present
+		h[keyHeader] = existingValue + ", " + valueHeader
+	} else {
+		//remove ';' before setting the value
+		valueHeader = strings.TrimSuffix(valueHeader, ";") // Remove trailing semicolon if present
+		// If it doesn't exist, set the new value
+		h[keyHeader] = valueHeader
+	}
+
 	n = len(lines[0]) + len(crlf) // Length of the header line plus CRLF
 
 	return n, false, nil // Successfully parsed the header line

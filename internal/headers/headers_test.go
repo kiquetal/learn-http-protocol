@@ -30,15 +30,18 @@ func TestHeader(t *testing.T) {
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
 
-	h = NewHeaders()
+}
+func TestHeaderMultipleValues(t *testing.T) {
+	h := NewHeaders()
 	//test multiple values header
-	data = []byte("Set-Person: lane-loves-go;\r\n")
-	n, done, err = h.Parse(data)
+	data := []byte("Set-Person: lane-loves-go;\r\n")
+	n, done, err := h.Parse(data)
 	require.NoError(t, err)
-	assert.Equal(t, "lane-loves-go;", h["set-person"])
+	assert.Equal(t, "lane-loves-go", h["set-person"])
 	data = []byte("Set-Person: prime-loves-zig;\r\n\r\n")
 	n, done, err = h.Parse(data)
 	require.NoError(t, err)
-	assert.Equal(t, "lane-loves-go, prime-loves-zig,", h["set-person"])
-
+	assert.Equal(t, "lane-loves-go, prime-loves-zig", h["set-person"])
+	assert.False(t, done)
+	assert.NotNil(t, n)
 }
