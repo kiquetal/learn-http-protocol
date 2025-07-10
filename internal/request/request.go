@@ -10,6 +10,7 @@ type state int
 const (
 	intialized state = iota
 	done
+	requestStateParsingHeaders
 )
 
 type Request struct {
