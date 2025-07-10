@@ -65,3 +65,7 @@ func (cr *chunkReader) Read(p []byte) (n int, err error) {
 	}
 	return n, nil
 }
+
+func TestHeaderWithRequestLine(t *testing.T) {
+
+}
