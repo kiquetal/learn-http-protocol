@@ -9,8 +9,8 @@ type state int
 
 const (
 	intialized state = iota
-	done
 	requestStateParsingHeaders
+	requestStateDone
 )
 
 type Request struct {
@@ -49,7 +49,7 @@ func (r *Request) parse(data []byte) (int, error) {
 	r.RequestLine.Method = parts[0]
 	r.RequestLine.RequestTarget = parts[1]
 	r.RequestLine.HttpVersion = strings.TrimPrefix(parts[2], "HTTP/")
-	r.State = done // Mark the request as done after parsing the request line
+	r.State = requestStateParsingHeaders // Mark the request as done after parsing the request line
 	return lineForParse, nil
 
 }
@@ -108,7 +108,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		}
 
 		buffer = buffer[endOfLine:] // Remove the parsed part from the buffer
-		if r.State == done {
+		if r.State == requestStateDone {
 			//		fmt.Print("Buffer after parsing: ", string(buffer), "\n")
 			//		fmt.Println("Read to index:", readToIndex)
 			return r, nil // Return the request if it has been parsed
