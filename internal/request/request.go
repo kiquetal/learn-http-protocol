@@ -15,6 +15,7 @@ const (
 type Request struct {
 	RequestLine RequestLine
 	State       state
+	Headers     map[string]string // Headers can be added later
 }
 
 type RequestLine struct {
