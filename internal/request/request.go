@@ -26,6 +26,14 @@ type RequestLine struct {
 }
 
 func (r *Request) parse(data []byte) (int, error) {
+	// Parse the request line from the data
+	totalBytesParse := 0
+	for r.State != requestStateDone {
+		n, err := r.parseSingle
+	}
+}
+
+func (r *Request) parseOld(data []byte) (int, error) {
 
 	//parse slice of bytes into request line
 	if r.State != intialized {
@@ -150,4 +158,9 @@ func parseRequestLine(line string) (int, error) {
 		return 0, io.ErrUnexpectedEOF // Not enough parts for a valid request line
 	}
 	return beforeEndOfLineIndex + len("\r\n"), nil
+}
+
+func (r *Request) parseSingle(data []byte) (int, error) {
+	//parse single request line, the line end with \r\n
+	//this should parse
 }
