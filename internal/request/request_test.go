@@ -1,6 +1,7 @@
 package request
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -84,6 +85,7 @@ func TestHeaderWithRequestLine(t *testing.T) {
 		numBytesPerRead: 3,
 	}
 	r, err = RequestFromReader(reader)
+	fmt.Println(err)
 	require.Error(t, err)
 
 }

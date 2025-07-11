@@ -1,6 +1,7 @@
 package request
 
 import (
+	"github.com/kiquetal/learn-http-protocol/internal/headers"
 	"io"
 	"strings"
 )
@@ -16,7 +17,7 @@ const (
 type Request struct {
 	RequestLine RequestLine
 	State       state
-	Headers     map[string]string // Headers can be added later
+	Headers     headers.Header // Headers can be added later
 }
 
 type RequestLine struct {
@@ -29,8 +30,39 @@ func (r *Request) parse(data []byte) (int, error) {
 	// Parse the request line from the data
 	totalBytesParse := 0
 	for r.State != requestStateDone {
-		n, err := r.parseSingle
+		if r.State == intialized {
+			r.Headers = headers.NewHeaders() // Initialize headers map
+			n, err := r.parseSingle(data)
+			if err != nil {
+				return 0, err // Return any error encountered during parsing
+			}
+			if n == 0 {
+				return 0, nil // No complete request line found yet
+			}
+			r.State = requestStateParsingHeaders
+			totalBytesParse += n
+			return totalBytesParse, nil // Return the number of bytes parsed so far
+		} else if r.State == requestStateParsingHeaders {
+			// Parse headers from the remaining data
+
+			n, done, err := r.Headers.Parse(data)
+			if err != nil {
+				return 0, err // Return any error encountered during parsing
+			}
+			if n == 0 {
+				return 0, nil
+			}
+			totalBytesParse += n
+			if done {
+				r.State = requestStateDone  // Mark the request as done after parsing headers
+				return totalBytesParse, nil // Return the total number of bytes parsed
+			} else {
+				return totalBytesParse, nil // Return the number of bytes parsed so far
+			}
+		}
 	}
+	return totalBytesParse, nil // Return the total number of bytes parsed
+
 }
 
 func (r *Request) parseOld(data []byte) (int, error) {
@@ -163,4 +195,17 @@ func parseRequestLine(line string) (int, error) {
 func (r *Request) parseSingle(data []byte) (int, error) {
 	//parse single request line, the line end with \r\n
 	//this should parse
+	beforeEndOfLineIndex := strings.Index(string(data), "\r\n")
+	if beforeEndOfLineIndex == -1 {
+		return 0, nil // No end of line found, return nil error
+	}
+
+	parts := strings.Split(string(data[:beforeEndOfLineIndex]), " ")
+	if len(parts) < 3 {
+		return 0, io.ErrUnexpectedEOF // Not enough parts for a valid request line
+	}
+	r.RequestLine.Method = parts[0]
+	r.RequestLine.RequestTarget = parts[1]
+	r.RequestLine.HttpVersion = strings.TrimPrefix(parts[2], "HTTP/")
+	return beforeEndOfLineIndex + len("\r\n"), nil // Return the length of the parsed line including \r\n
 }
