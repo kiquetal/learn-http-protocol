@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/kiquetal/learn-http-protocol/internal/headers"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -66,7 +67,22 @@ func (r *Request) parse(data []byte) (int, error) {
 		case requestStateParsingBody:
 			// Add handling for body parsing here
 			// For now, just mark the request as done
-			r.State = requestStateDone
+			//check if the request is empty, assume the existence of header "Content-Length"
+
+			if valueBody, exists := r.Headers["content-length"]; !exists {
+				r.State = requestStateDone // If no content-length header, mark as done
+				return 0, nil
+			} else {
+				d, e := strconv.Atoi(valueBody)
+				if e != nil {
+					return 0, e // Return error if content-length is not a valid integer
+				}
+				if len(data) > d {
+					return 0, io.ErrUnexpectedEOF // Not enough data for the body
+				}
+
+			}
+
 			return totalBytesParse, nil
 		}
 	}
