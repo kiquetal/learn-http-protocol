@@ -108,6 +108,7 @@ func (r *Request) parse(data []byte) (int, error) {
 						// Append the data to the body
 						fmt.Println("Appending to body, current length:", len(r.Body), "Expected length:", d)
 						r.Body = append(r.Body, data[:d-len(r.Body)]...) // Append only the required bytes to the body
+						totalBytesParse += d - len(r.Body)               // Update the total bytes parsed
 					}
 
 				}
@@ -181,7 +182,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		if err != nil {
 			if err == io.EOF {
 				if r.State == requestStateParsingBody {
-					fmt.Println("here for the GET?")
+					fmt.Println("EOF reached while parsing body, current state:", r.State)
 					return nil, io.ErrUnexpectedEOF // If EOF is reached while parsing the body, return an error
 				}
 				if r.State == intialized {
