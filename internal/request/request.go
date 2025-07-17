@@ -1,6 +1,7 @@
 package request
 
 import (
+	"fmt"
 	"github.com/kiquetal/learn-http-protocol/internal/headers"
 	"io"
 	"strconv"
@@ -58,6 +59,11 @@ func (r *Request) parse(data []byte) (int, error) {
 			}
 			totalBytesParse += n
 			if done {
+				//if exists content-length header, parse the body
+				if _, exists := r.Headers["content-length"]; !exists {
+					r.State = requestStateDone
+					return totalBytesParse, nil // If no content-length header, mark as done and return
+				}
 				r.State = requestStateParsingBody // Mark the request as done after parsing headers
 				return totalBytesParse, nil       // Return the total number of bytes parsed
 			} else {
@@ -68,22 +74,44 @@ func (r *Request) parse(data []byte) (int, error) {
 			// Add handling for body parsing here
 			// For now, just mark the request as done
 			//check if the request is empty, assume the existence of header "Content-Length"
-
 			if valueBody, exists := r.Headers["content-length"]; !exists {
 				r.State = requestStateDone // If no content-length header, mark as done
 				return 0, nil
 			} else {
+
+				//initialize the body the first time
+				// initialize with a lower value
+				if r.Body == nil {
+					fmt.Println("first initialization with len:", len(data))
+					r.Body = make([]byte, 0, len(data)) // Initialize body with a capacity of 1024 bytes
+				}
+
 				d, e := strconv.Atoi(valueBody)
 				if e != nil {
+					fmt.Println("Error parsing content-length:", e)
 					return 0, e // Return error if content-length is not a valid integer
 				}
-				if len(data) > d {
-					return 0, io.ErrUnexpectedEOF // Not enough data for the body
+
+				// check if the body is already complete
+				if len(r.Body) == d {
+					fmt.Println("finished body parsing, length:", len(r.Body), "Expected length:", d)
+					r.State = requestStateDone  // If body is complete, mark as done
+					return totalBytesParse, nil // Return the total number of bytes parsed
+				} else {
+
+					//check if the len data is the same as the content-length if no return 0 to continue reading
+
+					if len(data) < d {
+
+						return 0, nil // Not enough data to complete the body, return 0 to continue reading
+					} else {
+						// Append the data to the body
+						fmt.Println("Appending to body, current length:", len(r.Body), "Expected length:", d)
+						r.Body = append(r.Body, data[:d-len(r.Body)]...) // Append only the required bytes to the body
+					}
+
 				}
-
 			}
-
-			return totalBytesParse, nil
 		}
 	}
 	return totalBytesParse, nil // Return the total number of bytes parsed
@@ -152,6 +180,10 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		n, err := reader.Read(tmp)
 		if err != nil {
 			if err == io.EOF {
+				if r.State == requestStateParsingBody {
+					fmt.Println("here for the GET?")
+					return nil, io.ErrUnexpectedEOF // If EOF is reached while parsing the body, return an error
+				}
 				if r.State == intialized {
 					return nil, io.ErrUnexpectedEOF // Request is not complete
 				}
@@ -172,13 +204,13 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			continue
 		}
 
-		buffer = buffer[endOfLine:] // Remove the parsed part from the buffer
 		if r.State == requestStateDone {
 			//		fmt.Print("Buffer after parsing: ", string(buffer), "\n")
 			//		fmt.Println("Read to index:", readToIndex)
 			return r, nil // Return the request if it has been parsed
 		}
 
+		buffer = buffer[endOfLine:] // Remove the parsed part from the buffer
 	}
 
 }

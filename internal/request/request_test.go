@@ -91,6 +91,7 @@ func TestHeaderWithRequestLine(t *testing.T) {
 }
 
 func TestRequestWithBody(t *testing.T) {
+
 	reader := &chunkReader{
 		data: "POST /submit HTTP/1.1\r\n" +
 			"Host: localhost:42069\r\n" +
