@@ -13,7 +13,7 @@ type Server struct {
 	Closed atomic.Bool // Use atomic for thread-safe boolean
 }
 
-func (s *Server) Serve(port int) (*Server, error) {
+func Serve(port int) (*Server, error) {
 
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
@@ -24,6 +24,7 @@ func (s *Server) Serve(port int) (*Server, error) {
 		Server: listener,
 	}
 	server.Closed.Store(false)
+	go server.listen()
 	return server, nil
 }
 
@@ -83,11 +84,11 @@ func (s *Server) handle(conn net.Conn) {
 
 func (s *Server) Close() error {
 	if s.Closed.Load() {
-		return fmt.Errorf("server already closed")
+		fmt.Println("Server is already closed")
+		return nil // Server is already closed, nothing to do
 	}
 	s.Closed.Store(true)
-	if err := s.Server.Close(); err != nil {
-		return fmt.Errorf("error closing server: %w", err)
-	}
+
+	fmt.Println("Server closed successfully")
 	return nil
 }
