@@ -53,6 +53,10 @@ func main() {
 		fmt.Printf("- Method: %s\r\n", r.RequestLine.Method)
 		fmt.Printf("- Target: %s\r\n", r.RequestLine.RequestTarget)
 		fmt.Printf("- Version: %s\r\n", r.RequestLine.HttpVersion)
+		fmt.Println("Headers:")
+		for key, value := range r.Headers {
+			fmt.Printf("- %s: %s\r\n", key, value)
+		}
 	}
 
 	// Use the file as an io.ReadCloser

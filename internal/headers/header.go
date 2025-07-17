@@ -29,7 +29,7 @@ func (h Header) Parse(data []byte) (n int, done bool, err error) {
 	}
 
 	keyValue := strings.SplitN(lines[0], ":", 2)
-	fmt.Print("Value: ", keyValue, "\n")
+	//fmt.Print("Value: ", keyValue, "\n")
 	if len(keyValue) < 2 {
 		return 0, false, errors.New("Invalid Header") // Not a valid header line
 	}
