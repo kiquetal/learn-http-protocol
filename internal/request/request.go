@@ -33,88 +33,98 @@ type RequestLine struct {
 func (r *Request) parse(data []byte) (int, error) {
 	// Parse the request line from the data
 	totalBytesParse := 0
-	for r.State != requestStateDone {
-		switch r.State {
-		case intialized:
-			r.Headers = headers.NewHeaders() // Initialize headers map
-			n, err := r.parseSingle(data)
-			if err != nil {
-				return 0, err // Return any error encountered during parsing
-			}
-			if n == 0 {
-				return 0, nil // No complete request line found yet
-			}
-			r.State = requestStateParsingHeaders
-			totalBytesParse += n
-			return totalBytesParse, nil // Return the number of bytes parsed so far
 
-		case requestStateParsingHeaders:
-			// Parse headers from the remaining data
-			n, done, err := r.Headers.Parse(data)
-			if err != nil {
-				return 0, err // Return any error encountered during parsing
-			}
-			if n == 0 {
-				return 0, nil
-			}
-			totalBytesParse += n
-			if done {
-				//if exists content-length header, parse the body
-				if _, exists := r.Headers["content-length"]; !exists {
-					r.State = requestStateDone
-					return totalBytesParse, nil // If no content-length header, mark as done and return
-				}
-				r.State = requestStateParsingBody // Mark the request as done after parsing headers
-				return totalBytesParse, nil       // Return the total number of bytes parsed
-			} else {
-				return totalBytesParse, nil // Return the number of bytes parsed so far
-			}
-
-		case requestStateParsingBody:
-			// Add handling for body parsing here
-			// For now, just mark the request as done
-			//check if the request is empty, assume the existence of header "Content-Length"
-			if valueBody, exists := r.Headers["content-length"]; !exists {
-				r.State = requestStateDone // If no content-length header, mark as done
-				return 0, nil
-			} else {
-
-				//initialize the body the first time
-				// initialize with a lower value
-				if r.Body == nil {
-					fmt.Println("first initialization with len:", len(data))
-					r.Body = make([]byte, 0, len(data)) // Initialize body with a capacity of 1024 bytes
-				}
-
-				d, e := strconv.Atoi(valueBody)
-				if e != nil {
-					fmt.Println("Error parsing content-length:", e)
-					return 0, e // Return error if content-length is not a valid integer
-				}
-
-				// check if the body is already complete
-				if len(r.Body) == d {
-					fmt.Println("finished body parsing, length:", len(r.Body), "Expected length:", d)
-					r.State = requestStateDone  // If body is complete, mark as done
-					return totalBytesParse, nil // Return the total number of bytes parsed
-				} else {
-
-					//check if the len data is the same as the content-length if no return 0 to continue reading
-
-					if len(data) < d {
-
-						return 0, nil // Not enough data to complete the body, return 0 to continue reading
-					} else {
-						// Append the data to the body
-						fmt.Println("Appending to body, current length:", len(r.Body), "Expected length:", d)
-						r.Body = append(r.Body, data[:d-len(r.Body)]...) // Append only the required bytes to the body
-						totalBytesParse += d - len(r.Body)               // Update the total bytes parsed
-					}
-
-				}
-			}
+	switch r.State {
+	case intialized:
+		r.Headers = headers.NewHeaders() // Initialize headers map
+		n, err := r.parseSingle(data)
+		if err != nil {
+			return 0, err // Return any error encountered during parsing
 		}
+		if n == 0 {
+			return 0, nil // No complete request line found yet
+		}
+		r.State = requestStateParsingHeaders
+		totalBytesParse += n
+		return totalBytesParse, nil // Return the number of bytes parsed so far
+
+	case requestStateParsingHeaders:
+		// Parse headers from the remaining data
+		n, done, err := r.Headers.Parse(data)
+		if err != nil {
+			return 0, err // Return any error encountered during parsing
+		}
+		if n == 0 {
+			return 0, nil
+		}
+		totalBytesParse += n
+		if done {
+			//if exists content-length header, parse the body
+			if _, exists := r.Headers["content-length"]; !exists {
+				r.State = requestStateDone
+				return totalBytesParse, nil // If no content-length header, mark as done and return
+			}
+			r.State = requestStateParsingBody // Mark the request as done after parsing headers
+			return totalBytesParse, nil       // Return the total number of bytes parsed
+		} else {
+			return totalBytesParse, nil // Return the number of bytes parsed so far
+		}
+
+	case requestStateParsingBody:
+		// Add handling for body parsing here
+		if valueBody, exists := r.Headers["content-length"]; !exists {
+			r.State = requestStateDone // If no content-length header, mark as done
+			return 0, nil
+		} else {
+			//initialize the body the first time
+			if r.Body == nil {
+				fmt.Println("first initialization with len:", len(data))
+				r.Body = make([]byte, 0, len(data)) // Initialize body with a capacity based on data length
+			}
+
+			d, e := strconv.Atoi(valueBody)
+			if e != nil {
+				fmt.Println("Error parsing content-length:", e)
+				return 0, e // Return error if content-length is not a valid integer
+			}
+
+			// Check if the body is already complete
+			if len(r.Body) == d {
+				fmt.Println("finished body parsing, length:", len(r.Body), "Expected length:", d)
+				r.State = requestStateDone  // If body is complete, mark as done
+				return totalBytesParse, nil // Return the total number of bytes parsed
+			}
+
+			// Check if we have any data to add to the body
+			if len(data) == 0 {
+				return 0, nil // No data to add, continue reading
+			}
+
+			// Calculate how many more bytes we need to read
+			bytesNeeded := d - len(r.Body)
+
+			// Check if we have enough data to complete the body
+			bytesToAppend := len(data)
+			if bytesToAppend > bytesNeeded {
+				bytesToAppend = bytesNeeded
+			}
+
+			fmt.Println("Body length:", len(r.Body), "Expected length:", d)
+			r.Body = append(r.Body, data[:bytesToAppend]...) // Append only the required bytes to the body
+			totalBytesParse += bytesToAppend                 // Update the total bytes parsed
+
+			// Check if we've completed the body now
+			if len(r.Body) == d {
+				r.State = requestStateDone
+			}
+
+			return totalBytesParse, nil
+		}
+
+	case requestStateDone:
+		return totalBytesParse, nil
 	}
+
 	return totalBytesParse, nil // Return the total number of bytes parsed
 
 }
