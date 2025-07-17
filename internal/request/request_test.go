@@ -89,3 +89,7 @@ func TestHeaderWithRequestLine(t *testing.T) {
 	require.Error(t, err)
 
 }
+
+func TestRequestWithBody(t *testing.T) {
+
+}

@@ -18,6 +18,7 @@ type Request struct {
 	RequestLine RequestLine
 	State       state
 	Headers     headers.Header // Headers can be added later
+	Body        []byte         // Body can be added later, if needed
 }
 
 type RequestLine struct {
