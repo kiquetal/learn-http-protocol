@@ -72,7 +72,9 @@ func (s *Server) handle(conn net.Conn) {
 	fmt.Printf("Received %d bytes: %s\n", n, string(buf[:n]))
 	// implement a response
 
-	response := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello, World!"
+	body := "Hello World!"
+
+	response := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(body), body)
 	_, err = conn.Write([]byte(response))
 	if err != nil {
 		fmt.Printf("Error writing to connection: %v\n", err)
