@@ -16,10 +16,12 @@ func main() {
 
 	serv, err := server.Serve(port)
 	if err != nil {
+		utils.Logger.Debug("Failed to start server: %v", err)
 		utils.Logger.Error("Failed to serve: %v", err)
 		os.Exit(1)
 	}
 	defer serv.Close()
+
 	utils.Logger.Info("Server started on port %d", port)
 
 	sigChan := make(chan os.Signal, 1)
