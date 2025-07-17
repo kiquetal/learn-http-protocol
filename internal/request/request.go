@@ -11,6 +11,7 @@ type state int
 const (
 	intialized state = iota
 	requestStateParsingHeaders
+	requestStateParsingBody
 	requestStateDone
 )
 
@@ -31,7 +32,8 @@ func (r *Request) parse(data []byte) (int, error) {
 	// Parse the request line from the data
 	totalBytesParse := 0
 	for r.State != requestStateDone {
-		if r.State == intialized {
+		switch r.State {
+		case intialized:
 			r.Headers = headers.NewHeaders() // Initialize headers map
 			n, err := r.parseSingle(data)
 			if err != nil {
@@ -43,9 +45,9 @@ func (r *Request) parse(data []byte) (int, error) {
 			r.State = requestStateParsingHeaders
 			totalBytesParse += n
 			return totalBytesParse, nil // Return the number of bytes parsed so far
-		} else if r.State == requestStateParsingHeaders {
-			// Parse headers from the remaining data
 
+		case requestStateParsingHeaders:
+			// Parse headers from the remaining data
 			n, done, err := r.Headers.Parse(data)
 			if err != nil {
 				return 0, err // Return any error encountered during parsing
@@ -55,11 +57,17 @@ func (r *Request) parse(data []byte) (int, error) {
 			}
 			totalBytesParse += n
 			if done {
-				r.State = requestStateDone  // Mark the request as done after parsing headers
-				return totalBytesParse, nil // Return the total number of bytes parsed
+				r.State = requestStateParsingBody // Mark the request as done after parsing headers
+				return totalBytesParse, nil       // Return the total number of bytes parsed
 			} else {
 				return totalBytesParse, nil // Return the number of bytes parsed so far
 			}
+
+		case requestStateParsingBody:
+			// Add handling for body parsing here
+			// For now, just mark the request as done
+			r.State = requestStateDone
+			return totalBytesParse, nil
 		}
 	}
 	return totalBytesParse, nil // Return the total number of bytes parsed
