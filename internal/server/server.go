@@ -90,5 +90,5 @@ func (s *Server) Close() error {
 	s.Closed.Store(true)
 
 	fmt.Println("Server closed successfully")
-	return nil
+	return s.Server.Close() // Close the listener
 }
