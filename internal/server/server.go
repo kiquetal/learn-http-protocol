@@ -15,18 +15,25 @@ type Server struct {
 
 func (s *Server) Serve(port int) (*Server, error) {
 
-	s.Port = port
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
 		return nil, err
 	}
-	s.Server = listener
-	return s, nil
+	server := &Server{
+		Port:   port,
+		Server: listener,
+	}
+	server.Closed.Store(false)
+	return server, nil
 }
 
 func (s *Server) listen() {
 	for {
 		conn, err := s.Server.Accept()
+		if s.Closed.Load() {
+			fmt.Println("Server is closed, stopping accept loop")
+			return // Exit the loop if the server is closed
+		}
 		if err != nil {
 			continue // Handle error appropriately in production code
 		}
@@ -72,4 +79,15 @@ func (s *Server) handle(conn net.Conn) {
 	}
 	fmt.Println("Response sent successfully")
 
+}
+
+func (s *Server) Close() error {
+	if s.Closed.Load() {
+		return fmt.Errorf("server already closed")
+	}
+	s.Closed.Store(true)
+	if err := s.Server.Close(); err != nil {
+		return fmt.Errorf("error closing server: %w", err)
+	}
+	return nil
 }
