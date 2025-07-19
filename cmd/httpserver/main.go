@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/kiquetal/learn-http-protocol/internal/server"
 	"github.com/kiquetal/learn-http-protocol/internal/utils"
+	"io"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,4 +31,18 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan
 	utils.Logger.Info("Server gracefully stopped")
+}
+
+type Handler func(conn net.Conn)
+type HandlerError struct {
+	StatusCode int
+	Message    string
+}
+
+func WriteErrorResponse(w io.Writer, handleErr HandlerError) {
+
+	_, err := fmt.Fprint(w, "HTTP/1.1 ", handleErr.StatusCode, " ", handleErr.Message, "\r\n")
+	if err != nil {
+		utils.Logger.Error("Error writing response: %v", err)
+	}
 }
