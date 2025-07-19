@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/kiquetal/learn-http-protocol/internal/request"
 	"github.com/kiquetal/learn-http-protocol/internal/response"
 	"github.com/kiquetal/learn-http-protocol/internal/utils"
 	"io"
@@ -99,7 +100,7 @@ func (s *Server) Close() error {
 
 type Handler func(conn net.Conn) *HandlerError
 type HandlerError struct {
-	StatusCode int
+	StatusCode response.StatusCode
 	Message    string
 }
 
@@ -112,6 +113,17 @@ func WriteErrorResponse(w io.Writer, handleErr HandlerError) {
 }
 
 func handlerFunction(conn net.Conn) *HandlerError {
+
+	//parse the request from the connection
+
+	r, err := request.RequestFromReader(conn)
+	if err != nil {
+		utils.Logger.Error("Error reading request: %v", err)
+		return &HandlerError{
+			StatusCode: response.StatusBadRequest,
+			Message:    "Bad Request",
+		}
+	}
 
 	return nil
 }
