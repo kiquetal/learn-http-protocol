@@ -49,32 +49,41 @@ func (r *Request) parse(data []byte) (int, error) {
 			return totalBytesParse, nil // Return the number of bytes parsed so far
 
 		case requestStateParsingHeaders:
-			// Parse headers from the remaining data
-			n, done, err := r.Headers.Parse(data)
-			if err != nil {
-				return 0, err // Return any error encountered during parsing
-			}
-			if n == 0 {
-				return 0, nil
-			}
-			totalBytesParse += n
-			if done {
-				//if exists content-length header, parse the body
-				if _, exists := r.Headers["content-length"]; !exists {
-					r.State = requestStateDone
-					return totalBytesParse, nil // If no content-length header, mark as done and return
+			fmt.Println("before loop:[", string(data)+"] the bytes in data are:", len(data))
+			for {
+				n, done, err := r.Headers.Parse(data)
+				fmt.Println("inside loop, we have data:", string(data), "n:", n, "done:", done)
+				if err != nil {
+					return 0, err // Return any error encountered during header parsing
 				}
-				r.State = requestStateParsingBody // Mark the request as done after parsing headers
-				return totalBytesParse, nil       // Return the total number of bytes parsed
-			} else {
-				return totalBytesParse, nil // Return the number of bytes parsed so far
+				if n == 0 {
+					fmt.Println("need mor data,lets see how many bytes we have parsed so far :", totalBytesParse)
+					break
+				}
+				fmt.Println("from the parsing headers, we have parsed:", n, "bytes")
+				data = data[n:]
+				totalBytesParse += n // Update the total bytes parsed
+				if done {
+					if _, exists := r.Headers["content-length"]; !exists {
+						fmt.Println("No content-length header found, marking request as done")
+						r.State = requestStateDone  // If no content-length header, mark as done
+						return totalBytesParse, nil // Return the total number of bytes parsed so far
+					} else {
+						fmt.Println("Content-Length header found, continuing to body parsing")
+						r.State = requestStateParsingBody // Move to body parsing state
+						return totalBytesParse, nil       // Return the total number of bytes parsed so far
+					}
+				}
 			}
+			fmt.Println("Sending to caller", totalBytesParse)
+			return totalBytesParse, nil // Return the total number of bytes parsed so far
 
 		case requestStateParsingBody:
 			// Add handling for body parsing here
 			// For now, just mark the request as done
 			//check if the request is empty, assume the existence of header "Content-Length"
 			if valueBody, exists := r.Headers["content-length"]; !exists {
+				fmt.Println("No content-length header found, marking request as done")
 				r.State = requestStateDone // If no content-length header, mark as done
 				return 0, nil
 			} else {
@@ -195,22 +204,21 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		// Append the read bytes to the buffer
 		readToIndex += n
 		buffer = append(buffer, tmp[:n]...)
-		// Parse the request line
+
 		endOfLine, err := r.parse(buffer)
 		if err != nil {
 			return nil, err // Return any other error
 		}
-		if endOfLine == 0 {
-			// If no end of line was found, continue reading
-			continue
-		}
-
 		if r.State == requestStateDone {
 			//		fmt.Print("Buffer after parsing: ", string(buffer), "\n")
 			//		fmt.Println("Read to index:", readToIndex)
 			return r, nil // Return the request if it has been parsed
 		}
-
+		if endOfLine == 0 {
+			fmt.Println("continue reading")
+			// If no end of line was found, continue reading
+			continue
+		}
 		buffer = buffer[endOfLine:] // Remove the parsed part from the buffer
 	}
 

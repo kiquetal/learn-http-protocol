@@ -1,7 +1,7 @@
 package server
 
 import (
-	"fmt"
+	"bytes"
 	"github.com/kiquetal/learn-http-protocol/internal/request"
 	"github.com/kiquetal/learn-http-protocol/internal/response"
 	"github.com/kiquetal/learn-http-protocol/internal/utils"
@@ -46,8 +46,7 @@ func (s *Server) listen() {
 		}
 		go func(c net.Conn) {
 			// call the handle function to process the connection
-			s.handler(c)
-
+			s.handle(c)
 			defer c.Close()
 			// Handle the connection (e.g., read request, send response)
 			// This is where you would implement your request handling logic
@@ -66,24 +65,31 @@ func (s *Server) handle(conn net.Conn) {
 		}
 	}(conn)
 
-	buf := make([]byte, 4096) // Buffer to read data
-	n, err := conn.Read(buf)
-	if err != nil {
-		utils.Logger.Error("Error reading from connection: %v", err)
+	utils.Logger.Debug("Starting to handle connections")
+	req, e := request.RequestFromReader(conn)
+	if e != nil {
+		utils.Logger.Error("Error parsing request: %v", e)
+		WriteErrorResponse(conn, HandlerError{
+			StatusCode: response.StatusBadRequest,
+			Message:    "Bad Request",
+		})
 		return
 	}
-	utils.Logger.Debug("Received %d bytes: %s", n, string(buf[:n]))
-
-	headers := response.GetDefaultHeaders(0)
-	err = response.WriteStatusLine(conn, response.StatusOK)
-	if err != nil {
-		utils.Logger.Error("Error writing status line: %v", err)
+	utils.Logger.Debug("Parsed request: %v", req)
+	bufferForHandler := new(bytes.Buffer)
+	handleErr := s.handler(bufferForHandler, req)
+	if handleErr != nil {
+		utils.Logger.Error("Handler error: %v", handleErr)
+		WriteErrorResponse(conn, *handleErr)
+		return
 	}
-	err = response.WriteHeaders(conn, headers)
-	if err != nil {
-		utils.Logger.Error("Error writing headers to response: %v", err)
-	}
-
+	responseBuffer := new(bytes.Buffer)
+	resp := response.Response{StatusCode: response.StatusOK}
+	headers := response.GetDefaultHeaders(len(bufferForHandler.Bytes()))
+	response.WriteStatusLine(responseBuffer, resp.StatusCode)
+	response.WriteHeaders(responseBuffer, headers)
+	responseBuffer.Write(bufferForHandler.Bytes())
+	responseBuffer.WriteTo(conn)
 	utils.Logger.Info("Response sent successfully")
 }
 
@@ -98,7 +104,7 @@ func (s *Server) Close() error {
 	return s.Server.Close() // Close the listener
 }
 
-type Handler func(conn net.Conn) *HandlerError
+type Handler func(w io.Writer, req *request.Request) *HandlerError
 type HandlerError struct {
 	StatusCode response.StatusCode
 	Message    string
@@ -106,24 +112,17 @@ type HandlerError struct {
 
 func WriteErrorResponse(w io.Writer, handleErr HandlerError) {
 
-	_, err := fmt.Fprint(w, "HTTP/1.1 ", handleErr.StatusCode, " ", handleErr.Message, "\r\n")
+	err := response.WriteStatusLine(w, handleErr.StatusCode)
 	if err != nil {
-		utils.Logger.Error("Error writing response: %v", err)
+		return
 	}
-}
+	headers := response.GetDefaultHeaders(len(handleErr.Message))
 
-func handlerFunction(conn net.Conn) *HandlerError {
-
-	//parse the request from the connection
-
-	r, err := request.RequestFromReader(conn)
+	err = response.WriteHeaders(w, headers)
 	if err != nil {
-		utils.Logger.Error("Error reading request: %v", err)
-		return &HandlerError{
-			StatusCode: response.StatusBadRequest,
-			Message:    "Bad Request",
-		}
+		utils.Logger.Error("Error writing headers: %v", err)
+		return
 	}
+	_, err = w.Write([]byte(handleErr.Message))
 
-	return nil
 }

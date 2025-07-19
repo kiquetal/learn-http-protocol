@@ -1,6 +1,7 @@
 package headers
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
@@ -16,24 +17,29 @@ func (h Header) Parse(data []byte) (n int, done bool, err error) {
 
 	const crlf = "\r\n"
 
-	// Check complete header line
+	crlfIdx := bytes.Index(data, []byte("\r\n"))
+	if crlfIdx == -1 {
+		if len(data) > 0 && data[len(data)-1] == '\r' {
+			// no full CRLF line ended yet, need more data
+			return 0, false, nil
+		}
+		return 0, false, nil
+	}
+	line := data[:crlfIdx]
 
-	if !strings.Contains(string(data), crlf) {
-		return 0, false, nil // Not enough data to parse a complete header line
+	if len(line) == 0 {
+		fmt.Println("the index is ,", crlfIdx, "and the data is:", string(data))
+		// blank line (\r\n) -> end of headers
+		return crlfIdx + 2, true, nil
+	}
+	// parse key/value from line bytes here
+	// example:
+	parts := bytes.SplitN(line, []byte(":"), 2)
+	if len(parts) != 2 {
+		return 0, false, errors.New("invalid header line")
 	}
 
-	lines := strings.Split(string(data), crlf)
-
-	if lines[0] == "" {
-		return 2, true, nil // Empty header line, nothing to parse
-	}
-
-	keyValue := strings.SplitN(lines[0], ":", 2)
-	//fmt.Print("Value: ", keyValue, "\n")
-	if len(keyValue) < 2 {
-		return 0, false, errors.New("Invalid Header") // Not a valid header line
-	}
-
+	keyValue := []string{string(parts[0]), string(parts[1])}
 	if strings.Contains(keyValue[0], " ") {
 		//		fmt.Printf("Invalid Header: '%s'\n", keyValue[0])
 		return 0, false, errors.New("Invalid Header: key contains invalid characters") // Key contains invalid characters
@@ -63,9 +69,7 @@ func (h Header) Parse(data []byte) (n int, done bool, err error) {
 		// If it doesn't exist, set the new value
 		h[keyHeader] = valueHeader
 	}
-
-	n = len(lines[0]) + len(crlf) // Length of the header line plus CRLF
-
+	n = crlfIdx + 2      // Length of the header line plus CRLF
 	return n, false, nil // Successfully parsed the header line
 }
 
