@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/kiquetal/learn-http-protocol/internal/response"
 	"github.com/kiquetal/learn-http-protocol/internal/utils"
 	"net"
 	"strconv"
@@ -68,17 +69,16 @@ func (s *Server) handle(conn net.Conn) {
 	}
 	utils.Logger.Debug("Received %d bytes: %s", n, string(buf[:n]))
 
-	// implement a response
-	body := "Hello World!"
-
-	response := "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " +
-		strconv.Itoa(len(body)) + "\r\n\r\n" + body
-
-	_, err = conn.Write([]byte(response))
+	headers := response.GetDefaultHeaders(0)
+	err = response.WriteStatusLine(conn, response.StatusOK)
 	if err != nil {
-		utils.Logger.Error("Error writing to connection: %v", err)
-		return
+		utils.Logger.Error("Error writing status line: %v", err)
 	}
+	err = response.WriteHeaders(conn, headers)
+	if err != nil {
+		utils.Logger.Error("Error writing headers to response: %v", err)
+	}
+
 	utils.Logger.Info("Response sent successfully")
 }
 
