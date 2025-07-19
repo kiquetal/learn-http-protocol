@@ -1,27 +1,31 @@
 package server
 
 import (
+	"fmt"
 	"github.com/kiquetal/learn-http-protocol/internal/response"
 	"github.com/kiquetal/learn-http-protocol/internal/utils"
+	"io"
 	"net"
 	"strconv"
 	"sync/atomic"
 )
 
 type Server struct {
-	Port   int
-	Server net.Listener
-	Closed atomic.Bool // Use atomic for thread-safe boolean
+	Port    int
+	Server  net.Listener
+	handler Handler     // Handler function to process connections
+	Closed  atomic.Bool // Use atomic for thread-safe boolean
 }
 
-func Serve(port int) (*Server, error) {
+func Serve(port int, handler Handler) (*Server, error) {
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
 		return nil, err
 	}
 	server := &Server{
-		Port:   port,
-		Server: listener,
+		Port:    port,
+		Server:  listener,
+		handler: handler,
 	}
 	server.Closed.Store(false)
 	go server.listen()
@@ -41,7 +45,7 @@ func (s *Server) listen() {
 		}
 		go func(c net.Conn) {
 			// call the handle function to process the connection
-			s.handle(c)
+			s.handler(c)
 
 			defer c.Close()
 			// Handle the connection (e.g., read request, send response)
@@ -91,4 +95,23 @@ func (s *Server) Close() error {
 
 	utils.Logger.Info("Server closed successfully")
 	return s.Server.Close() // Close the listener
+}
+
+type Handler func(conn net.Conn) *HandlerError
+type HandlerError struct {
+	StatusCode int
+	Message    string
+}
+
+func WriteErrorResponse(w io.Writer, handleErr HandlerError) {
+
+	_, err := fmt.Fprint(w, "HTTP/1.1 ", handleErr.StatusCode, " ", handleErr.Message, "\r\n")
+	if err != nil {
+		utils.Logger.Error("Error writing response: %v", err)
+	}
+}
+
+func handlerFunction(conn net.Conn) *HandlerError {
+
+	return nil
 }
