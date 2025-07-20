@@ -61,7 +61,19 @@ func WriteHeaders(w io.Writer, headers headers.Header) error {
 	return err
 }
 
-type Writer struct{}
+type WriterStatus int
+
+const (
+	WriterStatusInitialized WriterStatus = iota
+	WriterStatusWritingHeaders
+	WriterStatusWritingBody
+	WriterStatusDone
+	WriterStatusError
+)
+
+type Writer struct {
+	writeStatus WriterStatus
+}
 
 func (w *Writer) WriteStatusLinEe(statusCode StatusCode) error {
 
