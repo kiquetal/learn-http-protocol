@@ -60,3 +60,21 @@ func WriteHeaders(w io.Writer, headers headers.Header) error {
 	_, err := w.Write([]byte("\r\n")) // End of headers
 	return err
 }
+
+type Writer struct{}
+
+func (w *Writer) WriteStatusLinEe(statusCode StatusCode) error {
+
+}
+
+func (w *Writer) WriteHeaders(headers headers.Header) error {
+
+}
+
+func (w *Writer) WriteBody(body []byte) error {
+	if len(body) == 0 {
+		return nil // No body to write
+	}
+	_, err := fmt.Fprintf(w, "%s", body)
+	return err
+}
