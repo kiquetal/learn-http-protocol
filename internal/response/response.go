@@ -46,7 +46,7 @@ func GetDefaultHeaders(contentLen int) headers.Header {
 
 	return headers.Header{
 		"Content-Length": fmt.Sprintf("%d", contentLen),
-		"Content-Type":   "text/plain",
+		"Content-Type":   "text/html",
 		"Connection":     "close",
 	}
 }

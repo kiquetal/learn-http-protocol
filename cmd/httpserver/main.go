@@ -40,7 +40,7 @@ func createCustomHandler() server.Handler {
 		case "GET /yourproblem":
 			_ = w.WriteStatusLine(400) // HTTP 200 OK
 			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getBadRequestHtml())))
-			_, _ = w.Write([]byte(getOkHtml()))
+			_, _ = w.Write([]byte(getBadRequestHtml()))
 
 		case "GET /myproblem":
 
