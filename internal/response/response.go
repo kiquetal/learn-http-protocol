@@ -73,39 +73,39 @@ const (
 
 type Writer struct {
 	io.Writer   // Underlying writer to write the response
-	writeStatus WriterStatus
+	WriteStatus WriterStatus
 }
 
 func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 
-	w.writeStatus = WriterStatusInitialized
+	w.WriteStatus = WriterStatusInitialized
 	statusText := getStatusText(statusCode)
 	statusLine := fmt.Sprintf("HTTP/1.1 %d %s\r\n", statusCode, statusText)
 	if _, err := fmt.Fprint(w, statusLine); err != nil {
-		w.writeStatus = WriterStatusError
+		w.WriteStatus = WriterStatusError
 		return fmt.Errorf("error writing status line: %w", err)
 	}
-	w.writeStatus = WriterStatusWritingHeaders
+	w.WriteStatus = WriterStatusWritingHeaders
 	return nil
 
 }
 
 func (w *Writer) WriteHeaders(headers headers.Header) error {
-	if w.writeStatus != WriterStatusWritingHeaders {
-		return fmt.Errorf("cannot write headers in current state: %v", w.writeStatus)
+	if w.WriteStatus != WriterStatusWritingHeaders {
+		return fmt.Errorf("cannot write headers in current state: %v", w.WriteStatus)
 	}
 
 	if err := WriteHeaders(w, headers); err != nil {
-		w.writeStatus = WriterStatusError
+		w.WriteStatus = WriterStatusError
 		return fmt.Errorf("error writing headers: %w", err)
 	}
-	w.writeStatus = WriterStatusWritingBody
+	w.WriteStatus = WriterStatusWritingBody
 	return nil
 }
 
 func (w *Writer) WriteBody(body []byte) (int, error) {
 
-	if w.writeStatus != WriterStatusWritingBody {
+	if w.WriteStatus != WriterStatusWritingBody {
 		return 0, fmt.Errorf("cannot write body in current state: %v", w.writeStatus)
 	}
 	//need to add the header with the content length
@@ -116,7 +116,7 @@ func (w *Writer) WriteBody(body []byte) (int, error) {
 	if err := WriteHeaders(w, header); err != nil {
 		n, err := w.Writer.Write(body)
 		if err != nil {
-			w.writeStatus = WriterStatusError
+			w.WriteStatus = WriterStatusError
 			return n, fmt.Errorf("error writing body: %w", err)
 		}
 
@@ -125,6 +125,7 @@ func (w *Writer) WriteBody(body []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	w.WriteStatus = WriterStatusDone
 	return n, nil
 
 }

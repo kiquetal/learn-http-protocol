@@ -76,8 +76,12 @@ func (s *Server) handle(conn net.Conn) {
 		return
 	}
 	utils.Logger.Debug("Parsed request: %v", req)
+	writer := response.Writer{
+		Writer:      conn,
+		WriteStatus: response.WriterStatusInitialized,
+	}
 	bufferForHandler := new(bytes.Buffer)
-	handleErr := s.handler(bufferForHandler, req)
+	s.handler(writer, req)
 	if handleErr != nil {
 		utils.Logger.Error("Handler error: %v", handleErr)
 		WriteErrorResponse(conn, *handleErr)
