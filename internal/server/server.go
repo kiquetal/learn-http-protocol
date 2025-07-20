@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"github.com/kiquetal/learn-http-protocol/internal/request"
 	"github.com/kiquetal/learn-http-protocol/internal/response"
 	"github.com/kiquetal/learn-http-protocol/internal/utils"
@@ -76,24 +75,12 @@ func (s *Server) handle(conn net.Conn) {
 		return
 	}
 	utils.Logger.Debug("Parsed request: %v", req)
-	writer := response.Writer{
+	writer := &response.Writer{
 		Writer:      conn,
 		WriteStatus: response.WriterStatusInitialized,
 	}
-	bufferForHandler := new(bytes.Buffer)
 	s.handler(writer, req)
-	if handleErr != nil {
-		utils.Logger.Error("Handler error: %v", handleErr)
-		WriteErrorResponse(conn, *handleErr)
-		return
-	}
-	responseBuffer := new(bytes.Buffer)
-	resp := response.Response{StatusCode: response.StatusOK}
-	headers := response.GetDefaultHeaders(len(bufferForHandler.Bytes()))
-	response.WriteStatusLine(responseBuffer, resp.StatusCode)
-	response.WriteHeaders(responseBuffer, headers)
-	responseBuffer.Write(bufferForHandler.Bytes())
-	responseBuffer.WriteTo(conn)
+
 	utils.Logger.Info("Response sent successfully")
 }
 

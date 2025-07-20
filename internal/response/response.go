@@ -106,7 +106,7 @@ func (w *Writer) WriteHeaders(headers headers.Header) error {
 func (w *Writer) WriteBody(body []byte) (int, error) {
 
 	if w.WriteStatus != WriterStatusWritingBody {
-		return 0, fmt.Errorf("cannot write body in current state: %v", w.writeStatus)
+		return 0, fmt.Errorf("cannot write body in current state: %v", w.WriteStatus)
 	}
 	//need to add the header with the content length
 	contentLength := len(body)
