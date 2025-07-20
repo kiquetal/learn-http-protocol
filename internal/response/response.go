@@ -72,18 +72,27 @@ const (
 )
 
 type Writer struct {
+	io.Writer   // Underlying writer to write the response
 	writeStatus WriterStatus
 }
 
-func (w *Writer) WriteStatusLinEe(statusCode StatusCode) error {
+func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 
+	w.writeStatus = WriterStatusInitialized
+	statusText := getStatusText(statusCode)
+	statusLine := fmt.Sprintf("HTTP/1.1 %d %s\r\n", statusCode, statusText)
+	if _, err := fmt.Fprint(w, statusLine); err != nil {
+		w.writeStatus = WriterStatusError
+		return fmt.Errorf("error writing status line: %w", err)
+	}
+	w.writeStatus = WriterStatusWritingHeaders
 }
 
 func (w *Writer) WriteHeaders(headers headers.Header) error {
-
+	return nil
 }
 
-func (w *Writer) WriteBody(body []byte) error {
+func (w *Writer) WriteBody(body []byte) (int, error) {
 	if len(body) == 0 {
 		return nil // No body to write
 	}
