@@ -86,16 +86,45 @@ func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 		return fmt.Errorf("error writing status line: %w", err)
 	}
 	w.writeStatus = WriterStatusWritingHeaders
+	return nil
+
 }
 
 func (w *Writer) WriteHeaders(headers headers.Header) error {
+	if w.writeStatus != WriterStatusWritingHeaders {
+		return fmt.Errorf("cannot write headers in current state: %v", w.writeStatus)
+	}
+
+	if err := WriteHeaders(w, headers); err != nil {
+		w.writeStatus = WriterStatusError
+		return fmt.Errorf("error writing headers: %w", err)
+	}
+	w.writeStatus = WriterStatusWritingBody
 	return nil
 }
 
 func (w *Writer) WriteBody(body []byte) (int, error) {
-	if len(body) == 0 {
-		return nil // No body to write
+
+	if w.writeStatus != WriterStatusWritingBody {
+		return 0, fmt.Errorf("cannot write body in current state: %v", w.writeStatus)
 	}
-	_, err := fmt.Fprintf(w, "%s", body)
-	return err
+	//need to add the header with the content length
+	contentLength := len(body)
+	header := headers.Header{
+		"Content-Length": fmt.Sprintf("%d", contentLength),
+	}
+	if err := WriteHeaders(w, header); err != nil {
+		n, err := w.Writer.Write(body)
+		if err != nil {
+			w.writeStatus = WriterStatusError
+			return n, fmt.Errorf("error writing body: %w", err)
+		}
+
+	}
+	n, err := w.Write(body)
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
+
 }
