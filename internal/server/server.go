@@ -104,7 +104,7 @@ func (s *Server) Close() error {
 	return s.Server.Close() // Close the listener
 }
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+type Handler func(r *response.Writer, req *request.Request)
 type HandlerError struct {
 	StatusCode response.StatusCode
 	Message    string

@@ -2,9 +2,9 @@ package main
 
 import (
 	"github.com/kiquetal/learn-http-protocol/internal/request"
+	"github.com/kiquetal/learn-http-protocol/internal/response"
 	"github.com/kiquetal/learn-http-protocol/internal/server"
 	"github.com/kiquetal/learn-http-protocol/internal/utils"
-	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -33,29 +33,76 @@ func main() {
 }
 
 func createCustomHandler() server.Handler {
-	return func(w io.Writer, rq *request.Request) *server.HandlerError {
+	return func(w *response.Writer, rq *request.Request) {
 		methodAndPath := rq.RequestLine.Method + " " + rq.RequestLine.RequestTarget
 		utils.Logger.Debug("Handling request: %s", methodAndPath)
 		switch methodAndPath {
 		case "GET /yourproblem":
-			return &server.HandlerError{
-				StatusCode: 400,
-				Message:    "Your problem is not my problem",
-			}
+			_ = w.WriteStatusLine(400) // HTTP 200 OK
+			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getBadRequestHtml())))
+			_, _ = w.Write([]byte(getOkHtml()))
+
 		case "GET /myproblem":
-			return &server.HandlerError{
-				StatusCode: 500,
-				Message:    "Woopsie, my bad",
-			}
-		case "GET /use-nvim":
-			_, _ = w.Write([]byte("All good, frfr"))
-			return nil
+
+			_ = w.WriteStatusLine(500) // HTTP 400 Bad Request
+			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getInternalServerErrorHtml())))
+			_, _ = w.Write([]byte(getInternalServerErrorHtml()))
+		case "GET /":
+			_ = w.WriteStatusLine(200) // HTTP 200 OK
+			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getOkHtml())))
+			_, _ = w.Write([]byte(getOkHtml()))
 
 		default:
-			return &server.HandlerError{
-				StatusCode: 404,
-				Message:    "Not Found",
-			}
+			_ = w.WriteStatusLine(404) // HTTP 400 Bad Request
+			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getNotFoundHtml())))
+			_, _ = w.Write([]byte(getNotFoundHtml()))
 		}
 	}
+}
+
+func getOkHtml() string {
+	return `<html>
+  <head>
+    <title>200 OK</title>
+  </head>
+  <body>
+    <h1>Success!</h1>
+    <p>Your request was an absolute banger.</p>
+  </body>
+</html>`
+}
+func getBadRequestHtml() string {
+	return `<html>
+  <head>
+    <title>400 Bad Request</title>
+  </head>
+  <body>
+    <h1>Bad Request</h1>
+    <p>Your request honestly kinda sucked.</p>
+  </body>
+</html>`
+
+}
+func getInternalServerErrorHtml() string {
+	return `<html>
+  <head>
+    <title>500 Internal Server Error</title>
+  </head>
+  <body>
+    <h1>Internal Server Error</h1>
+    <p>Okay, you know what? This one is on me.</p>
+  </body>
+</html>`
+}
+
+func getNotFoundHtml() string {
+	return `<html>
+  <head>
+	<title>404 Not Found</title>
+  </head>
+  <body>
+	<h1>Not Found</h1>
+	<p>Sorry, I couldn't find what you were looking for.</p>
+  </body>
+}	`
 }
