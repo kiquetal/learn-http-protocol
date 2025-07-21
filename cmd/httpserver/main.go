@@ -1,14 +1,15 @@
 package main
 
 import (
+	"github.com/kiquetal/learn-http-protocol/internal/headers"
 	"github.com/kiquetal/learn-http-protocol/internal/request"
 	"github.com/kiquetal/learn-http-protocol/internal/response"
 	"github.com/kiquetal/learn-http-protocol/internal/server"
 	"github.com/kiquetal/learn-http-protocol/internal/utils"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -54,23 +55,80 @@ func createCustomHandler() server.Handler {
 			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getOkHtml())))
 			_, _ = w.Write([]byte(getOkHtml()))
 
-		case "GET /httpbin/stream/100":
-			get, err := http.Get("https://httpbin.org/stream/100")
-			if err != nil {
-				return
-			}
-			defer get.Body.Close()
-			p := make([]byte, 1024)
-			n, err = get.Body.Read(p)
-			if err != nil && err != io.EOF {
-				utils.Logger.Error("Error reading from httpbin: %v", err)
-
-			}
-
 		default:
-			_ = w.WriteStatusLine(404) // HTTP 400 Bad Request
-			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getNotFoundHtml())))
-			_, _ = w.Write([]byte(getNotFoundHtml()))
+			//check path begins with /httpbin
+			if strings.HasPrefix(rq.RequestLine.RequestTarget, "/httpbin") {
+				utils.Logger.Info("Handling /httpbin request")
+				subPath := strings.TrimPrefix(rq.RequestLine.RequestTarget, "/httpbin")
+				utils.Logger.Debug("Handling /httpbin request: %s", subPath)
+				res, err := http.Get("https://httpbin.org" + subPath) // Simulate a request to httpbin.org
+				if err != nil {
+					utils.Logger.Error("Error fetching from httpbin.org: %v", err)
+					_ = w.WriteStatusLine(500) // HTTP 500 Internal Server Error
+					_ = w.WriteHeaders(response.GetDefaultHeaders(len(getInternalServerErrorHtml())))
+					_, _ = w.Write([]byte(getInternalServerErrorHtml()))
+					return
+				}
+				defer res.Body.Close()
+				n := make([]byte, 32) // Initialize a byte slice with capacity
+				// read all the body
+
+				_ = w.WriteStatusLine(200) // HTTP 200 OK
+				//create headers for a response
+
+				headersForResponse := headers.NewHeaders()
+				headersForResponse["Content-Type"] = res.Header.Get("Content-Type")
+				headersForResponse["Transfer-Encoding"] = "chunked"
+				_ = w.WriteHeaders(headersForResponse)
+
+				for {
+					readbytes, err := res.Body.Read(n)
+					if err != nil {
+						if err.Error() == "EOF" {
+							intbytes, err := w.WriteChunkedBodyDone()
+							if err != nil {
+								utils.Logger.Error("Error writing chunked body done: %v", err)
+								return
+							}
+							utils.Logger.Debug("Wrote chunked body done, bytes written: %d", intbytes)
+							break // End of file, stop reading
+						}
+						utils.Logger.Error("Error reading response body: %v", err)
+						_ = w.WriteStatusLine(500) // HTTP 500 Internal Server Error
+						_ = w.WriteHeaders(response.GetDefaultHeaders(len(getInternalServerErrorHtml())))
+						_, _ = w.Write([]byte(getInternalServerErrorHtml()))
+						return
+
+					}
+					utils.Logger.Info("Response body: %s", string(n[:readbytes]))
+					//return chunked data using the function WriteChunked
+					if readbytes > 0 {
+						//how to check the first state of response.Writer
+
+						// Write the chunked data to the response writer
+						writeChunkedBody, err := w.WriteChunkedBody(n[:readbytes])
+						if err != nil {
+							return
+
+						}
+						if writeChunkedBody > 0 {
+							utils.Logger.Debug("Wrote chunked data: %s", string(n[:readbytes]))
+						} else {
+							utils.Logger.Debug("No more data to write, stopping")
+							break // No more data to write
+						}
+					} else {
+						break // No more data to read
+					}
+
+				}
+
+			} else {
+
+				_ = w.WriteStatusLine(404) // HTTP 404 Not Found
+				_ = w.WriteHeaders(response.GetDefaultHeaders(len(getNotFoundHtml())))
+				_, _ = w.Write([]byte(getNotFoundHtml()))
+			}
 		}
 	}
 }

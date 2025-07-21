@@ -130,8 +130,37 @@ func (w *Writer) WriteBody(body []byte) (int, error) {
 }
 
 func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
-	return 0, nil
+	// write chunked response, modify the header
+	if w.WriteStatus != WriterStatusWritingBody {
+		return 0, fmt.Errorf("cannot write chunked body in current state: %v", w.WriteStatus)
+	}
+	if len(p) == 0 {
+		return 0, nil // No data to write
+	}
+	chunkSize := fmt.Sprintf("%x\r\n", len(p))
+	if _, err := w.Write([]byte(chunkSize)); err != nil {
+		w.WriteStatus = WriterStatusError
+		return 0, fmt.Errorf("error writing chunk size: %w", err)
+	}
+	var n = 0
+	if n, err := w.Write(p); err != nil {
+		w.WriteStatus = WriterStatusError
+		return n, fmt.Errorf("error writing chunked body: %w", err)
+	}
+	return n, nil
 }
 func (w *Writer) WriteChunkedBodyDone() (int, error) {
-	return 0, nil
+
+	if w.WriteStatus != WriterStatusWritingBody {
+		return 0, fmt.Errorf("cannot write chunked body done in current state: %v", w.WriteStatus)
+		//write the last chunk with size 0
+	}
+
+	if _, err := w.Write([]byte("0\r\n\r\n")); err != nil {
+		w.WriteStatus = WriterStatusError
+		return 0, fmt.Errorf("error writing chunked body done: %w", err)
+	}
+	w.WriteStatus = WriterStatusDone
+	return 1, nil
+
 }
