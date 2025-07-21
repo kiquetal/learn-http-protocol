@@ -52,6 +52,8 @@ func createCustomHandler() server.Handler {
 			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getOkHtml())))
 			_, _ = w.Write([]byte(getOkHtml()))
 
+		case "GET /httpbin/stream/100":
+
 		default:
 			_ = w.WriteStatusLine(404) // HTTP 400 Bad Request
 			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getNotFoundHtml())))
