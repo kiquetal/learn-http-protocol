@@ -142,10 +142,14 @@ func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
 		w.WriteStatus = WriterStatusError
 		return 0, fmt.Errorf("error writing chunk size: %w", err)
 	}
-	var n = 0
-	if n, err := w.Write(p); err != nil {
+	n, err := w.Write(p)
+	if err != nil {
 		w.WriteStatus = WriterStatusError
 		return n, fmt.Errorf("error writing chunked body: %w", err)
+	}
+	if _, err := w.Write([]byte("\r\n")); err != nil {
+		w.WriteStatus = WriterStatusError
+		return n, fmt.Errorf("error writing chunked body end: %w", err)
 	}
 	return n, nil
 }

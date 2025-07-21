@@ -70,7 +70,7 @@ func createCustomHandler() server.Handler {
 					return
 				}
 				defer res.Body.Close()
-				n := make([]byte, 32) // Initialize a byte slice with capacity
+				n := make([]byte, 512) // Initialize a byte slice with capacity
 				// read all the body
 
 				_ = w.WriteStatusLine(200) // HTTP 200 OK
@@ -103,9 +103,7 @@ func createCustomHandler() server.Handler {
 					utils.Logger.Info("Response body: %s", string(n[:readbytes]))
 					//return chunked data using the function WriteChunked
 					if readbytes > 0 {
-						//how to check the first state of response.Writer
 
-						// Write the chunked data to the response writer
 						writeChunkedBody, err := w.WriteChunkedBody(n[:readbytes])
 						if err != nil {
 							return
@@ -113,14 +111,8 @@ func createCustomHandler() server.Handler {
 						}
 						if writeChunkedBody > 0 {
 							utils.Logger.Debug("Wrote chunked data: %s", string(n[:readbytes]))
-						} else {
-							utils.Logger.Debug("No more data to write, stopping")
-							break // No more data to write
 						}
-					} else {
-						break // No more data to read
 					}
-
 				}
 
 			} else {
