@@ -127,11 +127,9 @@ func (w *Writer) WriteBody(body []byte) (int, error) {
 	}
 	w.WriteStatus = WriterStatusDone
 	return n, nil
-
 }
 
 func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
-
 	return 0, nil
 }
 func (w *Writer) WriteChunkedBodyDone() (int, error) {

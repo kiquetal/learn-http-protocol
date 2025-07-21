@@ -5,6 +5,7 @@ import (
 	"github.com/kiquetal/learn-http-protocol/internal/response"
 	"github.com/kiquetal/learn-http-protocol/internal/server"
 	"github.com/kiquetal/learn-http-protocol/internal/utils"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -53,6 +54,13 @@ func createCustomHandler() server.Handler {
 			_, _ = w.Write([]byte(getOkHtml()))
 
 		case "GET /httpbin/stream/100":
+			get, err := http.Get("https://httpbin.org/stream/100")
+			if err != nil {
+				return
+			}
+			defer get.Body.Close()
+			n := []byte
+			resp := get.Body.Read(n)
 
 		default:
 			_ = w.WriteStatusLine(404) // HTTP 400 Bad Request
