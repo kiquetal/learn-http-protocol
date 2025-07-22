@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -58,6 +59,27 @@ func createCustomHandler() server.Handler {
 			_ = w.WriteHeaders(response.GetDefaultHeaders(len(getOkHtml())))
 			_, _ = w.Write([]byte(getOkHtml()))
 
+		case "GET /video":
+			utils.Logger.Info("Handling /video request")
+			_ = w.WriteStatusLine(200) // HTTP 200 OK
+			headers := headers.NewHeaders()
+			headers["Content-Type"] = "video/mp4"
+			file, err := os.ReadFile(filepath.Join("assets", "vim.mp4")) // Read the video file
+			if err != nil {
+				utils.Logger.Error("Error reading video file: %v", err)
+				return
+			}
+			utils.Logger.Info("Read video file of size: %d bytes", len(file))
+			headers["Content-Length"] = strconv.Itoa(len(file))
+			_ = w.WriteHeaders(headers)
+			_, err = w.Write(file)
+			if err != nil {
+				utils.Logger.Error("Error writing video file: %v", err)
+				_ = w.WriteStatusLine(500) // HTTP 500 Internal Server Error
+				_ = w.WriteHeaders(response.GetDefaultHeaders(len(getInternalServerErrorHtml())))
+				_, _ = w.Write([]byte(getInternalServerErrorHtml()))
+				return
+			}
 		default:
 			//check path begins with /httpbin
 			if strings.HasPrefix(rq.RequestLine.RequestTarget, "/httpbin") {
