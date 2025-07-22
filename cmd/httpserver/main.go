@@ -102,7 +102,6 @@ func createCustomHandler() server.Handler {
 								utils.Logger.Error("Error writing chunked body done: %v", err)
 								return
 							}
-							utils.Logger.Debug("Wrote chunked body done, bytes written: %d", intbytes)
 							break // End of file, stop reading
 						}
 						utils.Logger.Error("Error reading response body: %v", err)
