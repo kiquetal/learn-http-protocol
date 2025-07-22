@@ -168,3 +168,14 @@ func (w *Writer) WriteChunkedBodyDone() (int, error) {
 	return 1, nil
 
 }
+
+func (w *Writer) WriteTrailers(headers headers.Header) error {
+	if w.WriteStatus != WriterStatusWritingBody {
+		return fmt.Errorf("cannot write trailers in current state: %v", w.WriteStatus)
+	}
+	if err := WriteHeaders(w, headers); err != nil {
+		w.WriteStatus = WriterStatusError
+		return fmt.Errorf("error writing trailers: %w", err)
+	}
+	return nil
+}
