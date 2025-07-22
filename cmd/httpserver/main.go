@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/kiquetal/learn-http-protocol/internal/headers"
 	"github.com/kiquetal/learn-http-protocol/internal/request"
 	"github.com/kiquetal/learn-http-protocol/internal/response"
@@ -9,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -79,13 +82,22 @@ func createCustomHandler() server.Handler {
 				headersForResponse := headers.NewHeaders()
 				headersForResponse["Content-Type"] = res.Header.Get("Content-Type")
 				headersForResponse["Transfer-Encoding"] = "chunked"
+				headersForResponse["Trailer"] = "X-Content-SHA256,X-Content-Length"
 				_ = w.WriteHeaders(headersForResponse)
-
+				hash := sha256.New()
+				totalBytes := 0
 				for {
 					readbytes, err := res.Body.Read(n)
 					if err != nil {
 						if err.Error() == "EOF" {
-							intbytes, err := w.WriteChunkedBodyDone()
+							//	intbytes, err := w.WriteChunkedBodyDone()
+							hashFinal := hash.Sum(nil)
+							headerForHash := headers.Header{
+								"X-Content-SHA256": fmt.Sprintf("%x", hashFinal),
+								"X-Content-Length": strconv.Itoa(totalBytes),
+							}
+							w.WriteTrailers(headerForHash)
+
 							if err != nil {
 								utils.Logger.Error("Error writing chunked body done: %v", err)
 								return
@@ -103,7 +115,8 @@ func createCustomHandler() server.Handler {
 					utils.Logger.Info("Response body: %s", string(n[:readbytes]))
 					//return chunked data using the function WriteChunked
 					if readbytes > 0 {
-
+						hash.Write(n[:readbytes])
+						totalBytes += readbytes
 						writeChunkedBody, err := w.WriteChunkedBody(n[:readbytes])
 						if err != nil {
 							return

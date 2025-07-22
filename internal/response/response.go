@@ -170,12 +170,25 @@ func (w *Writer) WriteChunkedBodyDone() (int, error) {
 }
 
 func (w *Writer) WriteTrailers(headers headers.Header) error {
+
+	//first write the final chunk with size 0
 	if w.WriteStatus != WriterStatusWritingBody {
 		return fmt.Errorf("cannot write trailers in current state: %v", w.WriteStatus)
 	}
-	if err := WriteHeaders(w, headers); err != nil {
+	if _, err := w.Write([]byte("0\r\n")); err != nil {
 		w.WriteStatus = WriterStatusError
 		return fmt.Errorf("error writing trailers: %w", err)
 	}
+	if err := WriteHeaders(w, headers); err != nil {
+		w.WriteStatus = WriterStatusError
+		return fmt.Errorf("error writing trailers headers: %w", err)
+	}
+	//write the end of the trailers
+	if _, err := w.Write([]byte("\r\n")); err != nil {
+		w.WriteStatus = WriterStatusDone
+		return nil
+
+	}
+	w.WriteStatus = WriterStatusDone
 	return nil
 }
